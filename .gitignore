@@ -1,0 +1,9 @@
+node_modules/
+backup-*/
+attached_assets/
+__pycache__/
+*.log
+.cache/
+PiSet-System.zip
+.DS_Store
+
