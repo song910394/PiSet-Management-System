@@ -2090,22 +2090,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Backup routes
+  // Backup routes (舊版本，用於相容性)
   app.get("/api/backup", async (req, res) => {
     try {
-      const materials = await storage.getMaterials();
-      const recipes = await storage.getRecipes();
-      const packaging = await storage.getPackaging();
-      const products = await storage.getProducts();
-      const nutrition = await storage.getNutritionFacts();
+      // 獲取所有系統數據
+      const [materials, recipes, packaging, products, customProducts, nutritionFacts, taiwanNutrition, nutritionLabels, nutritionLabelTemplates] = await Promise.all([
+        storage.getMaterials(),
+        storage.getRecipes(), 
+        storage.getPackaging(),
+        storage.getProducts(),
+        storage.getCustomProducts(),
+        storage.getNutritionFacts(),
+        storage.getTaiwanNutritionDatabase(),
+        storage.getNutritionLabels(),
+        storage.getNutritionLabelTemplates()
+      ]);
 
       const backupData = {
-        materials,
-        recipes,
-        packaging,
-        products,
-        nutrition,
         timestamp: new Date().toISOString(),
+        version: "1.0",
+        description: "手動備份",
+        data: {
+          materials,
+          recipes,
+          packaging,
+          products,
+          customProducts,
+          nutritionFacts,
+          taiwanNutrition,
+          nutritionLabels,
+          nutritionLabelTemplates
+        },
+        statistics: {
+          materialsCount: materials.length,
+          recipesCount: recipes.length,
+          packagingCount: packaging.length,
+          productsCount: products.length,
+          customProductsCount: customProducts.length,
+          nutritionFactsCount: nutritionFacts.length,
+          taiwanNutritionCount: taiwanNutrition.length,
+          nutritionLabelsCount: nutritionLabels.length,
+          nutritionLabelTemplatesCount: nutritionLabelTemplates.length
+        }
       };
 
       const filename = `backup-${new Date().toISOString().split('T')[0]}.json`;
@@ -2127,15 +2153,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const backupContent = req.file.buffer.toString('utf-8');
       const backupData = JSON.parse(backupContent);
 
-      if (!backupData.materials && !backupData.recipes && !backupData.products && !backupData.packaging && !backupData.nutrition) {
+      // 支持新舊兩種備份格式
+      // 新格式: backupData.data.materials
+      // 舊格式: backupData.materials
+      const isNewFormat = backupData.data !== undefined;
+      
+      if (!isNewFormat && !backupData.materials && !backupData.recipes && !backupData.products && !backupData.packaging && !backupData.nutrition) {
+        return res.status(400).json({ message: "備份檔案格式錯誤" });
+      }
+      
+      if (isNewFormat && !backupData.data) {
         return res.status(400).json({ message: "備份檔案格式錯誤" });
       }
 
+      // 提取資料（支持新舊格式）
+      const data = isNewFormat ? backupData.data : backupData;
+      const materials = data.materials || [];
+      const packaging = data.packaging || [];
+      const recipes = data.recipes || [];
+      const products = data.products || [];
+      const customProducts = data.customProducts || [];
+      const nutritionFacts = data.nutrition || data.nutritionFacts || [];
+      
       let restoredCount = 0;
 
       // Restore materials first (as they are referenced by recipes)
-      if (backupData.materials && Array.isArray(backupData.materials)) {
-        for (const material of backupData.materials) {
+      if (materials && Array.isArray(materials)) {
+        for (const material of materials) {
           try {
             const { id, createdAt, updatedAt, ...materialData } = material;
             
@@ -2156,8 +2200,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Restore packaging
-      if (backupData.packaging && Array.isArray(backupData.packaging)) {
-        for (const pack of backupData.packaging) {
+      if (packaging && Array.isArray(packaging)) {
+        for (const pack of packaging) {
           try {
             const { id, createdAt, updatedAt, ...packagingData } = pack;
             
@@ -2177,8 +2221,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Restore recipes (after materials)
-      if (backupData.recipes && Array.isArray(backupData.recipes)) {
-        for (const recipe of backupData.recipes) {
+      if (recipes && Array.isArray(recipes)) {
+        for (const recipe of recipes) {
           try {
             const { id, createdAt, updatedAt, ingredients, totalCost, costPerPortion, costPerGram, ...recipeData } = recipe;
             
@@ -2204,8 +2248,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Restore nutrition facts
-      if (backupData.nutrition && Array.isArray(backupData.nutrition)) {
-        for (const nutrition of backupData.nutrition) {
+      if (nutritionFacts && Array.isArray(nutritionFacts)) {
+        for (const nutrition of nutritionFacts) {
           try {
             const { id, createdAt, updatedAt, ...nutritionData } = nutrition;
             
@@ -2229,9 +2273,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // Restore products (last, as they reference recipes and packaging)
-      if (backupData.products && Array.isArray(backupData.products)) {
-        for (const product of backupData.products) {
+      // Restore products (after recipes and packaging)
+      if (products && Array.isArray(products)) {
+        for (const product of products) {
           try {
             const { 
               id, 
@@ -2268,6 +2312,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
             restoredCount++;
           } catch (error) {
             console.error("Restore product error:", error);
+          }
+        }
+      }
+
+      // Restore custom products (last, as they reference products)
+      if (customProducts && Array.isArray(customProducts)) {
+        for (const customProduct of customProducts) {
+          try {
+            const { 
+              id, 
+              createdAt, 
+              updatedAt, 
+              items: customProductItems,
+              totalCost,
+              profit,
+              profitMargin,
+              ...customProductData 
+            } = customProduct;
+            
+            // Prepare items data (products in custom product)
+            const itemsData = customProductItems ? customProductItems.map((item: any) => ({
+              productId: item.productId,
+              quantity: item.quantity.toString()
+            })) : [];
+
+            const existingCustomProducts = await storage.getCustomProducts(customProductData.name);
+            const existing = existingCustomProducts.find(cp => cp.name === customProductData.name);
+
+            if (existing) {
+              await storage.updateCustomProduct(existing.id, customProductData, itemsData, []);
+            } else {
+              await storage.createCustomProduct(customProductData, itemsData, []);
+            }
+            restoredCount++;
+          } catch (error) {
+            console.error("Restore custom product error:", error);
           }
         }
       }
