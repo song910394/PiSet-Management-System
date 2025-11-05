@@ -68,7 +68,23 @@ export async function createFullBackup(): Promise<string> {
     log("Starting full system backup...", "backup");
     
     // 獲取所有系統數據
-    const [materials, recipes, packaging, products, customProducts, nutritionFacts, taiwanNutrition, nutritionLabels, nutritionLabelTemplates] = await Promise.all([
+    const [
+      materials, 
+      recipes, 
+      packaging, 
+      products, 
+      customProducts, 
+      nutritionFacts, 
+      taiwanNutrition, 
+      nutritionLabels, 
+      nutritionLabelTemplates,
+      materialCategories,
+      recipeCategories,
+      productCategories,
+      customProductCategories,
+      packagingCategories,
+      userSettings
+    ] = await Promise.all([
       storage.getMaterials(),
       storage.getRecipes(), 
       storage.getPackaging(),
@@ -77,12 +93,18 @@ export async function createFullBackup(): Promise<string> {
       storage.getNutritionFacts(),
       storage.getTaiwanNutritionDatabase(),
       storage.getNutritionLabels(),
-      storage.getNutritionLabelTemplates()
+      storage.getNutritionLabelTemplates(),
+      storage.getMaterialCategories(),
+      storage.getRecipeCategories(),
+      storage.getProductCategories(),
+      storage.getCustomProductCategories(),
+      storage.getPackagingCategories(),
+      storage.getUserSettings("admin")
     ]);
 
     const backupData = {
       timestamp: new Date().toISOString(),
-      version: "1.0",
+      version: "2.0",
       description: "自動系統備份",
       data: {
         materials,
@@ -93,7 +115,13 @@ export async function createFullBackup(): Promise<string> {
         nutritionFacts,
         taiwanNutrition,
         nutritionLabels,
-        nutritionLabelTemplates
+        nutritionLabelTemplates,
+        materialCategories,
+        recipeCategories,
+        productCategories,
+        customProductCategories,
+        packagingCategories,
+        userSettings: userSettings ? [userSettings] : []
       },
       statistics: {
         materialsCount: materials.length,
@@ -104,7 +132,13 @@ export async function createFullBackup(): Promise<string> {
         nutritionFactsCount: nutritionFacts.length,
         taiwanNutritionCount: taiwanNutrition.length,
         nutritionLabelsCount: nutritionLabels.length,
-        nutritionLabelTemplatesCount: nutritionLabelTemplates.length
+        nutritionLabelTemplatesCount: nutritionLabelTemplates.length,
+        materialCategoriesCount: materialCategories.length,
+        recipeCategoriesCount: recipeCategories.length,
+        productCategoriesCount: productCategories.length,
+        customProductCategoriesCount: customProductCategories.length,
+        packagingCategoriesCount: packagingCategories.length,
+        userSettingsCount: userSettings ? 1 : 0
       }
     };
 

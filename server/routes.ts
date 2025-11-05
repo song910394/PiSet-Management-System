@@ -2094,7 +2094,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/backup", async (req, res) => {
     try {
       // 獲取所有系統數據
-      const [materials, recipes, packaging, products, customProducts, nutritionFacts, taiwanNutrition, nutritionLabels, nutritionLabelTemplates] = await Promise.all([
+      const [
+        materials, 
+        recipes, 
+        packaging, 
+        products, 
+        customProducts, 
+        nutritionFacts, 
+        taiwanNutrition, 
+        nutritionLabels, 
+        nutritionLabelTemplates,
+        materialCategories,
+        recipeCategories,
+        productCategories,
+        customProductCategories,
+        packagingCategories,
+        userSettings
+      ] = await Promise.all([
         storage.getMaterials(),
         storage.getRecipes(), 
         storage.getPackaging(),
@@ -2103,12 +2119,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         storage.getNutritionFacts(),
         storage.getTaiwanNutritionDatabase(),
         storage.getNutritionLabels(),
-        storage.getNutritionLabelTemplates()
+        storage.getNutritionLabelTemplates(),
+        storage.getMaterialCategories(),
+        storage.getRecipeCategories(),
+        storage.getProductCategories(),
+        storage.getCustomProductCategories(),
+        storage.getPackagingCategories(),
+        storage.getUserSettings("admin")
       ]);
 
       const backupData = {
         timestamp: new Date().toISOString(),
-        version: "1.0",
+        version: "2.0",
         description: "手動備份",
         data: {
           materials,
@@ -2119,7 +2141,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           nutritionFacts,
           taiwanNutrition,
           nutritionLabels,
-          nutritionLabelTemplates
+          nutritionLabelTemplates,
+          materialCategories,
+          recipeCategories,
+          productCategories,
+          customProductCategories,
+          packagingCategories,
+          userSettings: userSettings ? [userSettings] : []
         },
         statistics: {
           materialsCount: materials.length,
@@ -2130,7 +2158,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           nutritionFactsCount: nutritionFacts.length,
           taiwanNutritionCount: taiwanNutrition.length,
           nutritionLabelsCount: nutritionLabels.length,
-          nutritionLabelTemplatesCount: nutritionLabelTemplates.length
+          nutritionLabelTemplatesCount: nutritionLabelTemplates.length,
+          materialCategoriesCount: materialCategories.length,
+          recipeCategoriesCount: recipeCategories.length,
+          productCategoriesCount: productCategories.length,
+          customProductCategoriesCount: customProductCategories.length,
+          packagingCategoriesCount: packagingCategories.length,
+          userSettingsCount: userSettings ? 1 : 0
         }
       };
 
@@ -2174,6 +2208,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const products = data.products || [];
       const customProducts = data.customProducts || [];
       const nutritionFacts = data.nutrition || data.nutritionFacts || [];
+      const materialCategories = data.materialCategories || [];
+      const recipeCategories = data.recipeCategories || [];
+      const productCategories = data.productCategories || [];
+      const customProductCategories = data.customProductCategories || [];
+      const packagingCategories = data.packagingCategories || [];
+      const userSettings = data.userSettings || [];
       
       let restoredCount = 0;
 
@@ -2348,6 +2388,131 @@ export async function registerRoutes(app: Express): Promise<Server> {
             restoredCount++;
           } catch (error) {
             console.error("Restore custom product error:", error);
+          }
+        }
+      }
+
+      // Restore material categories
+      if (materialCategories && Array.isArray(materialCategories)) {
+        for (const category of materialCategories) {
+          try {
+            const { id, createdAt, updatedAt, ...categoryData } = category;
+            const allCategories = await storage.getMaterialCategories();
+            const existing = allCategories.find(c => c.name === categoryData.name);
+            
+            if (existing) {
+              await storage.updateMaterialCategory(existing.id, categoryData);
+            } else {
+              await storage.createMaterialCategory(categoryData);
+            }
+            restoredCount++;
+          } catch (error) {
+            console.error("Restore material category error:", error);
+          }
+        }
+      }
+
+      // Restore recipe categories
+      if (recipeCategories && Array.isArray(recipeCategories)) {
+        for (const category of recipeCategories) {
+          try {
+            const { id, createdAt, updatedAt, ...categoryData } = category;
+            const allCategories = await storage.getRecipeCategories();
+            const existing = allCategories.find(c => c.name === categoryData.name);
+            
+            if (existing) {
+              await storage.updateRecipeCategory(existing.id, categoryData);
+            } else {
+              await storage.createRecipeCategory(categoryData);
+            }
+            restoredCount++;
+          } catch (error) {
+            console.error("Restore recipe category error:", error);
+          }
+        }
+      }
+
+      // Restore product categories
+      if (productCategories && Array.isArray(productCategories)) {
+        for (const category of productCategories) {
+          try {
+            const { id, createdAt, updatedAt, ...categoryData } = category;
+            const allCategories = await storage.getProductCategories();
+            const existing = allCategories.find(c => c.name === categoryData.name);
+            
+            if (existing) {
+              await storage.updateProductCategory(existing.id, categoryData);
+            } else {
+              await storage.createProductCategory(categoryData);
+            }
+            restoredCount++;
+          } catch (error) {
+            console.error("Restore product category error:", error);
+          }
+        }
+      }
+
+      // Restore custom product categories
+      if (customProductCategories && Array.isArray(customProductCategories)) {
+        for (const category of customProductCategories) {
+          try {
+            const { id, createdAt, updatedAt, ...categoryData } = category;
+            const allCategories = await storage.getCustomProductCategories();
+            const existing = allCategories.find(c => c.name === categoryData.name);
+            
+            if (existing) {
+              await storage.updateCustomProductCategory(existing.id, categoryData);
+            } else {
+              await storage.createCustomProductCategory(categoryData);
+            }
+            restoredCount++;
+          } catch (error) {
+            console.error("Restore custom product category error:", error);
+          }
+        }
+      }
+
+      // Restore packaging categories
+      if (packagingCategories && Array.isArray(packagingCategories)) {
+        for (const category of packagingCategories) {
+          try {
+            const { id, createdAt, updatedAt, ...categoryData } = category;
+            const allCategories = await storage.getPackagingCategories();
+            const existing = allCategories.find(c => c.name === categoryData.name);
+            
+            if (existing) {
+              await storage.updatePackagingCategory(existing.id, categoryData);
+            } else {
+              await storage.createPackagingCategory(categoryData);
+            }
+            restoredCount++;
+          } catch (error) {
+            console.error("Restore packaging category error:", error);
+          }
+        }
+      }
+
+      // Restore user settings
+      if (userSettings && Array.isArray(userSettings) && userSettings.length > 0) {
+        for (const settings of userSettings) {
+          try {
+            const { id, createdAt, updatedAt, ...settingsData } = settings;
+            const existing = await storage.getUserSettings(settingsData.username);
+            
+            if (existing) {
+              // 更新密碼和利潤率設定
+              if (settingsData.passwordHash) {
+                await storage.updatePassword(settingsData.username, settingsData.passwordHash);
+              }
+              if (settingsData.profitMarginLow && settingsData.profitMarginHigh) {
+                await storage.updateProfitMargins(settingsData.username, settingsData.profitMarginLow, settingsData.profitMarginHigh);
+              }
+            } else {
+              await storage.createUserSettings(settingsData);
+            }
+            restoredCount++;
+          } catch (error) {
+            console.error("Restore user settings error:", error);
           }
         }
       }
