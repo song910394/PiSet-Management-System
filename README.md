@@ -1,9 +1,2 @@
-# PiSet Management System
-(測試自動部署) 2025-11-05 更新
-# PiSet Management System
-(測試自動部署) 2025-11-05 更新
-# PiSet Management System
-(測試自動部署) 2025-11-05 更新
-# PiSet Management System
-(測試自動部署) 2025-11-05 更新
-
+(自動更新測試) 2025-11-05 更新
+11051033--1
