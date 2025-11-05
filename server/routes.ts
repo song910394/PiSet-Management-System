@@ -2393,17 +2393,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Restore material categories
-      if (materialCategories && Array.isArray(materialCategories)) {
+      if (materialCategories && Array.isArray(materialCategories) && materialCategories.length > 0) {
+        const allMaterialCategories = await storage.getMaterialCategories();
         for (const category of materialCategories) {
           try {
             const { id, createdAt, updatedAt, ...categoryData } = category;
-            const allCategories = await storage.getMaterialCategories();
-            const existing = allCategories.find(c => c.name === categoryData.name);
+            const existing = allMaterialCategories.find(c => c.name === categoryData.name);
             
             if (existing) {
               await storage.updateMaterialCategory(existing.id, categoryData);
             } else {
-              await storage.createMaterialCategory(categoryData);
+              const newCategory = await storage.createMaterialCategory(categoryData);
+              allMaterialCategories.push(newCategory);
             }
             restoredCount++;
           } catch (error) {
@@ -2413,17 +2414,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Restore recipe categories
-      if (recipeCategories && Array.isArray(recipeCategories)) {
+      if (recipeCategories && Array.isArray(recipeCategories) && recipeCategories.length > 0) {
+        const allRecipeCategories = await storage.getRecipeCategories();
         for (const category of recipeCategories) {
           try {
             const { id, createdAt, updatedAt, ...categoryData } = category;
-            const allCategories = await storage.getRecipeCategories();
-            const existing = allCategories.find(c => c.name === categoryData.name);
+            const existing = allRecipeCategories.find(c => c.name === categoryData.name);
             
             if (existing) {
               await storage.updateRecipeCategory(existing.id, categoryData);
             } else {
-              await storage.createRecipeCategory(categoryData);
+              const newCategory = await storage.createRecipeCategory(categoryData);
+              allRecipeCategories.push(newCategory);
             }
             restoredCount++;
           } catch (error) {
@@ -2433,17 +2435,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Restore product categories
-      if (productCategories && Array.isArray(productCategories)) {
+      if (productCategories && Array.isArray(productCategories) && productCategories.length > 0) {
+        const allProductCategories = await storage.getProductCategories();
         for (const category of productCategories) {
           try {
             const { id, createdAt, updatedAt, ...categoryData } = category;
-            const allCategories = await storage.getProductCategories();
-            const existing = allCategories.find(c => c.name === categoryData.name);
+            const existing = allProductCategories.find(c => c.name === categoryData.name);
             
             if (existing) {
               await storage.updateProductCategory(existing.id, categoryData);
             } else {
-              await storage.createProductCategory(categoryData);
+              const newCategory = await storage.createProductCategory(categoryData);
+              allProductCategories.push(newCategory);
             }
             restoredCount++;
           } catch (error) {
@@ -2453,17 +2456,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Restore custom product categories
-      if (customProductCategories && Array.isArray(customProductCategories)) {
+      if (customProductCategories && Array.isArray(customProductCategories) && customProductCategories.length > 0) {
+        const allCustomProductCategories = await storage.getCustomProductCategories();
         for (const category of customProductCategories) {
           try {
             const { id, createdAt, updatedAt, ...categoryData } = category;
-            const allCategories = await storage.getCustomProductCategories();
-            const existing = allCategories.find(c => c.name === categoryData.name);
+            const existing = allCustomProductCategories.find(c => c.name === categoryData.name);
             
             if (existing) {
               await storage.updateCustomProductCategory(existing.id, categoryData);
             } else {
-              await storage.createCustomProductCategory(categoryData);
+              const newCategory = await storage.createCustomProductCategory(categoryData);
+              allCustomProductCategories.push(newCategory);
             }
             restoredCount++;
           } catch (error) {
@@ -2473,17 +2477,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Restore packaging categories
-      if (packagingCategories && Array.isArray(packagingCategories)) {
+      if (packagingCategories && Array.isArray(packagingCategories) && packagingCategories.length > 0) {
+        const allPackagingCategories = await storage.getPackagingCategories();
         for (const category of packagingCategories) {
           try {
             const { id, createdAt, updatedAt, ...categoryData } = category;
-            const allCategories = await storage.getPackagingCategories();
-            const existing = allCategories.find(c => c.name === categoryData.name);
+            const existing = allPackagingCategories.find(c => c.name === categoryData.name);
             
             if (existing) {
               await storage.updatePackagingCategory(existing.id, categoryData);
             } else {
-              await storage.createPackagingCategory(categoryData);
+              const newCategory = await storage.createPackagingCategory(categoryData);
+              allPackagingCategories.push(newCategory);
             }
             restoredCount++;
           } catch (error) {
@@ -2504,7 +2509,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               if (settingsData.passwordHash) {
                 await storage.updatePassword(settingsData.username, settingsData.passwordHash);
               }
-              if (settingsData.profitMarginLow && settingsData.profitMarginHigh) {
+              if (settingsData.profitMarginLow !== null && settingsData.profitMarginLow !== undefined && 
+                  settingsData.profitMarginHigh !== null && settingsData.profitMarginHigh !== undefined) {
                 await storage.updateProfitMargins(settingsData.username, settingsData.profitMarginLow, settingsData.profitMarginHigh);
               }
             } else {
